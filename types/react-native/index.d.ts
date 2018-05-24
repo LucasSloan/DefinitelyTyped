@@ -27,6 +27,7 @@
 
 /// <reference path="globals.d.ts" />
 /// <reference path="legacy-properties.d.ts" />
+/// <reference path="BatchedBridge.d.ts" />
 
 import * as React from 'react';
 
@@ -542,7 +543,7 @@ type FlexAlignType = "flex-start" | "flex-end" | "center" | "stretch" | "baselin
  * Flex Prop Types
  * @see https://facebook.github.io/react-native/docs/flexbox.html#proptypes
  * @see https://facebook.github.io/react-native/docs/layout-props.html
- * @see LayoutPropTypes.js
+ * @see https://github.com/facebook/react-native/blob/master/Libraries/StyleSheet/LayoutPropTypes.js
  */
 export interface FlexStyle {
     alignContent?: "flex-start" | "flex-end" | "center" | "stretch" | "space-between" | "space-around";
@@ -603,14 +604,6 @@ export interface FlexStyle {
      */
     direction?: "inherit" | "ltr" | "rtl";
 }
-
-
-/**
- * Layout Prop Types
- * @see https://facebook.github.io/react-native/docs/layout-props.html
- * @see LayoutPropTypes.js
- */
-export interface LayoutProps extends FlexStyle {}
 
 /**
  * @see ShadowPropTypesIOS.js
@@ -801,12 +794,6 @@ export interface TextStyle extends TextStyleIOS, TextStyleAndroid, ViewStyle {
 
 export interface TextPropsIOS {
     /**
-     * Specifies whether fonts should scale to respect Text Size accessibility setting on iOS. The
-     * default is `true`.
-     */
-    allowFontScaling?: boolean;
-
-    /**
      * Specifies whether font should be scaled down automatically to fit given style constraints.
      */
     adjustsFontSizeToFit?: boolean;
@@ -843,6 +830,12 @@ export interface TextPropsAndroid {
 
 // https://facebook.github.io/react-native/docs/text.html#props
 export interface TextProps extends TextPropsIOS, TextPropsAndroid, AccessibilityProps {
+    /**
+     * Specifies whether fonts should scale to respect Text Size accessibility settings.
+     * The default is `true`.
+     */
+    allowFontScaling?: boolean;
+
     /**
      * This can be one of the following values:
      *
@@ -1088,6 +1081,12 @@ export type ReturnKeyTypeOptions = ReturnKeyType | ReturnKeyTypeAndroid | Return
  */
 export interface TextInputProps
     extends ViewProps, TextInputIOSProps, TextInputAndroidProps, AccessibilityProps {
+    /**
+     * Specifies whether fonts should scale to respect Text Size accessibility settings.
+     * The default is `true`.
+     */
+    allowFontScaling?: boolean;
+
     /**
      * Can tell TextInput to automatically capitalize certain characters.
      *      characters: all characters,
@@ -1577,33 +1576,46 @@ export interface GestureResponderHandlers {
     onMoveShouldSetResponderCapture?: (event: GestureResponderEvent) => boolean;
 }
 
-// @see https://facebook.github.io/react-native/docs/view.html#style
-export interface ViewStyle extends FlexStyle, TransformsStyle {
+/**
+ * @see https://facebook.github.io/react-native/docs/view.html#style
+ * @see https://github.com/facebook/react-native/blob/master/Libraries/Components/View/ViewStylePropTypes.js
+ */
+export interface ViewStyle extends FlexStyle, ShadowStyleIOS, TransformsStyle {
     backfaceVisibility?: "visible" | "hidden";
     backgroundColor?: string;
     borderBottomColor?: string;
+    borderBottomEndRadius?: number;
     borderBottomLeftRadius?: number;
     borderBottomRightRadius?: number;
+    borderBottomStartRadius?: number;
     borderBottomWidth?: number;
     borderColor?: string;
+    borderEndColor?: string;
     borderLeftColor?: string;
+    borderLeftWidth?: number;
     borderRadius?: number;
     borderRightColor?: string;
     borderRightWidth?: number;
+    borderStartColor?: string;
     borderStyle?: "solid" | "dotted" | "dashed";
     borderTopColor?: string;
+    borderTopEndRadius?: number;
     borderTopLeftRadius?: number;
     borderTopRightRadius?: number;
+    borderTopStartRadius?: number;
     borderTopWidth?: number;
-    display?: "none" | "flex";
+    borderWidth?: number;
     opacity?: number;
-    overflow?: "visible" | "hidden";
-    shadowColor?: string;
-    shadowOffset?: { width: number; height: number };
-    shadowOpacity?: number;
-    shadowRadius?: number;
-    elevation?: number;
     testID?: string;
+    /**
+      * Sets the elevation of a view, using Android's underlying
+      * [elevation API](https://developer.android.com/training/material/shadows-clipping.html#Elevation).
+      * This adds a drop shadow to the item and affects z-order for overlapping views.
+      * Only supported on Android 5.0+, has no effect on earlier versions.
+      *
+      * @platform android
+      */
+    elevation?: number;
 }
 
 export interface ViewPropsIOS {
@@ -1672,6 +1684,7 @@ export interface ViewPropsAndroid {
      */
     renderToHardwareTextureAndroid?: boolean;
 }
+
 
 type Falsy = undefined | null | false;
 interface RecursiveArray<T> extends Array<T | RecursiveArray<T>> {}
@@ -1772,7 +1785,7 @@ type AccessibilityTraits =
  * @see https://facebook.github.io/react-native/docs/view.html#props
  */
 export interface ViewProps
-    extends ViewPropsAndroid, ViewPropsIOS, GestureResponderHandlers, Touchable, AccessibilityProps, LayoutProps {
+    extends ViewPropsAndroid, ViewPropsIOS, GestureResponderHandlers, Touchable, AccessibilityProps, ViewStyle {
     /**
      * This defines how far a touch event can start away from the view.
      * Typical interface guidelines recommend touch targets that are at least
@@ -1846,7 +1859,7 @@ export class View extends ViewBase {
      * Is 3D Touch / Force Touch available (i.e. will touch events include `force`)
      * @platform ios
      */
-    forceTouchAvailable: boolean;
+    static forceTouchAvailable: boolean;
 }
 
 /**
@@ -2593,7 +2606,7 @@ export interface DatePickerIOSProps extends ViewProps {
 
 declare class DatePickerIOSComponent extends React.Component<DatePickerIOSProps> {}
 declare const DatePickerIOSBase: Constructor<NativeMethodsMixin> & typeof DatePickerIOSComponent;
-export class DatePickerIOS extends TextInputBase {}
+export class DatePickerIOS extends DatePickerIOSBase {}
 
 export interface DrawerSlideEvent extends NativeSyntheticEvent<NativeTouchEvent> {}
 
@@ -2806,11 +2819,12 @@ export class Picker extends React.Component<PickerProps> {
     /**
      * On Android, display the options in a dialog.
      */
-    MODE_DIALOG: string;
+    static MODE_DIALOG: string;
+
     /**
      * On Android, display the options in a dropdown (this is the default).
      */
-    MODE_DROPDOWN: string;
+    static MODE_DROPDOWN: string;
 
     static Item: typeof PickerItem;
 }
@@ -2988,7 +3002,7 @@ export interface RefreshControlProps extends RefreshControlPropsIOS, RefreshCont
 declare class RefreshControlComponent extends React.Component<RefreshControlProps> {}
 declare const RefreshControlBase: Constructor<NativeMethodsMixin> & typeof RefreshControlComponent;
 export class RefreshControl extends RefreshControlBase {
-    SIZE: Object; // Undocumented
+    static SIZE: Object; // Undocumented
 }
 
 export interface RecyclerViewBackedScrollViewProps extends ScrollViewProps {}
@@ -3134,7 +3148,7 @@ export interface SliderProps extends SliderPropsIOS, SliderPropsAndroid {
  */
 declare class SliderComponent extends React.Component<SliderProps> {}
 declare const SliderBase: Constructor<NativeMethodsMixin> & typeof SliderComponent;
-export class Slider extends TextBase {}
+export class Slider extends SliderBase {}
 export type SliderIOS = Slider;
 
 /**
@@ -3229,8 +3243,9 @@ export interface ShadowStyleIOS {
 /**
  * Image style
  * @see https://facebook.github.io/react-native/docs/image.html#style
+ * @see https://github.com/facebook/react-native/blob/master/Libraries/Image/ImageStylePropTypes.js
  */
-export interface ImageStyle extends FlexStyle, TransformsStyle, ShadowStyleIOS {
+export interface ImageStyle extends FlexStyle, ShadowStyleIOS, TransformsStyle {
     resizeMode?: ImageResizeMode;
     backfaceVisibility?: "visible" | "hidden";
     borderBottomLeftRadius?: number;
@@ -3377,7 +3392,7 @@ export type ImageSourcePropType = ImageURISource | ImageURISource[] | ImageRequi
 /**
  * @see https://facebook.github.io/react-native/docs/image.html
  */
-export interface ImageProps extends ImagePropsIOS, ImagePropsAndroid, AccessibilityProps, LayoutProps {
+export interface ImagePropsBase extends ImagePropsIOS, ImagePropsAndroid, AccessibilityProps, ImageStyle {
     /**
      * onLayout function
      *
@@ -3483,15 +3498,25 @@ export interface ImageProps extends ImagePropsIOS, ImagePropsAndroid, Accessibil
     loadingIndicatorSource?: ImageURISource;
 
     /**
+     * A unique identifier for this element to be used in UI Automation testing scripts.
+     */
+    testID?: string;
+
+    /**
+     * Currently broken
+     * @see https://github.com/facebook/react-native/pull/19281
+     */
+    width?: never,
+    height?: never,
+    tintColor?: never,
+}
+
+export interface ImageProps extends ImagePropsBase {
+    /**
      *
      * Style
      */
     style?: StyleProp<ImageStyle>;
-
-    /**
-     * A unique identifier for this element to be used in UI Automation testing scripts.
-     */
-    testID?: string;
 }
 
 declare class ImageComponent extends React.Component<ImageProps> {}
@@ -3504,7 +3529,7 @@ export class Image extends ImageBase {
     queryCache?(urls: string[]): Promise<Map<string, "memory" | "disk">>;
 }
 
-export interface ImageBackgroundProps extends ImageProps {
+export interface ImageBackgroundProps extends ImagePropsBase {
     style?: StyleProp<ViewStyle>;
     imageStyle?: StyleProp<ImageStyle>;
 }
@@ -3699,7 +3724,7 @@ export interface FlatListProps<ItemT> extends VirtualizedListProps<ItemT> {
      * ```
      * _renderItem = ({item}) => (
      *   <TouchableOpacity onPress={() => this._onPress(item)}>
-     *     <Text>{item.title}}</Text>
+     *     <Text>{item.title}</Text>
      *   <TouchableOpacity/>
      * );
      * ...
@@ -3783,14 +3808,6 @@ export interface SectionListData<ItemT> extends SectionBase<ItemT> {
     [key: string]: any;
 }
 
-export interface SectionListScrollParams {
-    animated?: boolean;
-    itemIndex: number;
-    sectionIndex: number;
-    viewOffset?: number;
-    viewPosition?: number;
-}
-
 export interface SectionListProps<ItemT> extends ScrollViewProps {
     /**
      * Rendered in between adjacent Items within each section.
@@ -3843,6 +3860,19 @@ export interface SectionListProps<ItemT> extends ScrollViewProps {
      * How many items to render in the initial batch
      */
     initialNumToRender?: number;
+
+    /**
+     * Called once when the scroll position gets within onEndReachedThreshold of the rendered content.
+     */
+    onEndReached?: ((info: { distanceFromEnd: number }) => void) | null;
+
+    /**
+     * How far from the end (in units of visible length of the list) the bottom edge of the
+     * list must be from the end of the content to trigger the `onEndReached` callback.
+     * Thus a value of 0.5 will trigger `onEndReached` when the end of the content is
+     * within half the visible length of the list.
+     */
+    onEndReachedThreshold?: number | null;
 
     /**
      * Used to extract a unique key for a given item at the specified index. Key is used for caching
@@ -3899,7 +3929,17 @@ export interface SectionListProps<ItemT> extends ScrollViewProps {
      * Only enabled by default on iOS because that is the platform standard there.
      */
     stickySectionHeadersEnabled?: boolean;
+}
 
+export interface SectionListScrollParams {
+    animated?: boolean;
+    itemIndex: number;
+    sectionIndex: number;
+    viewOffset?: number;
+    viewPosition?: number;
+}
+
+export interface SectionListStatic<SectionT> extends React.ComponentClass<SectionListProps<SectionT>> {
     /**
      * Scrolls to the item at the specified sectionIndex and itemIndex (within the section)
      * positioned in the viewable area such that viewPosition 0 places it at the top
@@ -3907,8 +3947,6 @@ export interface SectionListProps<ItemT> extends ScrollViewProps {
      */
     scrollToLocation?(params: SectionListScrollParams): void;
 }
-
-export interface SectionListStatic<SectionT> extends React.ComponentClass<SectionListProps<SectionT>> {}
 
 /**
  * @see https://facebook.github.io/react-native/docs/virtualizedlist.html#props
@@ -4248,7 +4286,7 @@ interface TimerMixin {
 declare class ListViewComponent extends React.Component<ListViewProps> {}
 declare const ListViewBase: Constructor<ScrollResponderMixin> & Constructor<TimerMixin> & typeof ListViewComponent;
 export class ListView extends ListViewBase {
-    DataSource: ListViewDataSource;
+    static DataSource: ListViewDataSource;
 
     /**
      * Exports some data, e.g. for perf investigations or analytics.
@@ -4439,7 +4477,7 @@ export interface MapViewProps extends ViewProps {
 declare class MapViewComponent extends React.Component<MapViewProps> {}
 declare const MapViewBase: Constructor<NativeMethodsMixin> & typeof MapViewComponent;
 export class MapView extends MapViewBase {
-    PinColors: {
+    static PinColors: {
         RED: string;
         GREEN: string;
         PURPLE: string;
@@ -4791,14 +4829,14 @@ export class TouchableNativeFeedback extends TouchableNativeFeedbackBase {
      * Creates an object that represents android theme's default background for
      * selectable elements (?android:attr/selectableItemBackground).
      */
-    SelectableBackground(): ThemeAttributeBackgroundPropType;
+    static SelectableBackground(): ThemeAttributeBackgroundPropType;
 
     /**
      * Creates an object that represent android theme's default background for borderless
      * selectable elements (?android:attr/selectableItemBackgroundBorderless).
      * Available on android API level 21+.
      */
-    SelectableBackgroundBorderless(): ThemeAttributeBackgroundPropType;
+    static SelectableBackgroundBorderless(): ThemeAttributeBackgroundPropType;
 
     /**
      * Creates an object that represents ripple drawable with specified color (as a
@@ -4810,7 +4848,7 @@ export class TouchableNativeFeedback extends TouchableNativeFeedbackBase {
      * @param color The ripple color
      * @param borderless If the ripple can render outside it's bounds
      */
-    Ripple(color: string, borderless?: boolean): RippleBackgroundPropType;
+    static Ripple(color: string, borderless?: boolean): RippleBackgroundPropType;
 }
 
 export interface Route {
@@ -5461,34 +5499,6 @@ export interface InteractionManagerStatic extends EventEmitterListener {
     setDeadline(deadline: number): void;
 }
 
-export interface ScrollViewStyle extends FlexStyle, TransformsStyle {
-    backfaceVisibility?: "visible" | "hidden";
-    backgroundColor?: string;
-    borderColor?: string;
-    borderTopColor?: string;
-    borderRightColor?: string;
-    borderBottomColor?: string;
-    borderLeftColor?: string;
-    borderRadius?: number;
-    borderTopLeftRadius?: number;
-    borderTopRightRadius?: number;
-    borderBottomLeftRadius?: number;
-    borderBottomRightRadius?: number;
-    borderStyle?: "solid" | "dotted" | "dashed";
-    borderWidth?: number;
-    borderTopWidth?: number;
-    borderRightWidth?: number;
-    borderBottomWidth?: number;
-    borderLeftWidth?: number;
-    opacity?: number;
-    overflow?: "visible" | "hidden";
-    shadowColor?: string;
-    shadowOffset?: { width: number; height: number };
-    shadowOpacity?: number;
-    shadowRadius?: number;
-    elevation?: number;
-}
-
 export interface ScrollResponderEvent extends NativeSyntheticEvent<NativeTouchEvent> {}
 
 interface ScrollResponderMixin extends SubscribableMixin {
@@ -6057,7 +6067,7 @@ export interface ScrollViewProps
     /**
      * Style
      */
-    style?: StyleProp<ScrollViewStyle>;
+    style?: StyleProp<ViewStyle>;
 
     /**
      * A RefreshControl component, used to provide pull-to-refresh
@@ -6221,7 +6231,7 @@ export interface SwipeableListViewProps {
  * - More to come
  */
 export class SwipeableListView extends React.Component<SwipeableListViewProps> {
-    getNewDataSource(): SwipeableListViewDataSource;
+    static getNewDataSource(): SwipeableListViewDataSource;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -7543,7 +7553,7 @@ export class StatusBar extends React.Component<StatusBarProps> {
      * The current height of the status bar on the device.
      * @platform android
      */
-    currentHeight?: number;
+    static currentHeight?: number;
 
     /**
      * Show or hide the status bar
@@ -7551,33 +7561,33 @@ export class StatusBar extends React.Component<StatusBarProps> {
      * @param animation Optional animation when
      *    changing the status bar hidden property.
      */
-    setHidden: (hidden: boolean, animation?: StatusBarAnimation) => void;
+    static setHidden: (hidden: boolean, animation?: StatusBarAnimation) => void;
 
     /**
      * Set the status bar style
      * @param style Status bar style to set
      * @param animated Animate the style change.
      */
-    setBarStyle: (style: StatusBarStyle, animated?: boolean) => void;
+    static setBarStyle: (style: StatusBarStyle, animated?: boolean) => void;
 
     /**
      * Control the visibility of the network activity indicator
      * @param visible Show the indicator.
      */
-    setNetworkActivityIndicatorVisible: (visible: boolean) => void;
+    static setNetworkActivityIndicatorVisible: (visible: boolean) => void;
 
     /**
      * Set the background color for the status bar
      * @param color Background color.
      * @param animated Animate the style change.
      */
-    setBackgroundColor: (color: string, animated?: boolean) => void;
+    static setBackgroundColor: (color: string, animated?: boolean) => void;
 
     /**
      * Control the translucency of the status bar
      * @param translucent Set as translucent.
      */
-    setTranslucent: (translucent: boolean) => void;
+    static setTranslucent: (translucent: boolean) => void;
 }
 
 /**

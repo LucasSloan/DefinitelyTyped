@@ -9,7 +9,8 @@ export type Doc = doc.builders.Doc;
 
 // https://github.com/prettier/prettier/blob/master/src/common/fast-path.js
 export interface FastPath {
-    getName(): string | null;
+    stack: any[];
+    getName(): null | number | string;
     getValue(): any;
     getNode(count?: number): any;
     getParentNode(count?: number): any;
@@ -106,12 +107,15 @@ export interface RequiredOptions extends doc.printer.Options {
 export interface ParserOptions extends RequiredOptions {
     locStart: (node: any) => number;
     locEnd: (node: any) => number;
+    originalText: string;
 }
 
 export interface Plugin {
-    languages: SupportLanguage;
+    languages: SupportLanguage[];
     parsers: { [parserName: string]: Parser };
     printers: { [astFormat: string]: Printer };
+    options?: SupportOption[];
+    defaultOptions?: Partial<RequiredOptions>;
 }
 
 export interface Parser {
@@ -120,6 +124,7 @@ export interface Parser {
     hasPragma?: (text: string) => boolean;
     locStart: (node: any) => number;
     locEnd: (node: any) => number;
+    preprocess?: (text: string, options: ParserOptions) => string;
 }
 
 export interface Printer {
@@ -128,12 +133,12 @@ export interface Printer {
         options: ParserOptions,
         print: (path: FastPath) => Doc,
     ): Doc;
-    embed(
+    embed?: (
         path: FastPath,
         print: (path: FastPath) => Doc,
         textToDoc: (text: string, options: Options) => Doc,
         options: ParserOptions,
-    ): Doc | null;
+    ) => Doc | null;
     insertPragma?: (text: string) => string;
     /**
      * @returns `null` if you want to remove this node
@@ -232,7 +237,7 @@ export function clearConfigCache(): void;
 
 export interface SupportLanguage {
     name: string;
-    since: string;
+    since?: string;
     parsers: string[];
     group?: string;
     tmScope: string;
@@ -247,7 +252,7 @@ export interface SupportLanguage {
 }
 
 export interface SupportOption {
-    since: string;
+    since?: string;
     type: 'int' | 'boolean' | 'choice' | 'path';
     array?: boolean;
     deprecated?: string;
@@ -402,7 +407,11 @@ export namespace doc {
         function printDocToDebug(doc: Doc): string;
     }
     namespace printer {
-        function printDocToString(doc: Doc, options: Options): string;
+        function printDocToString(doc: Doc, options: Options): {
+            formatted: string;
+            cursorNodeStart?: number;
+            cursorNodeText?: string;
+        };
         interface Options {
             /**
              * Specify the line length that the printer will wrap on.
